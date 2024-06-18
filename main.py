@@ -52,40 +52,35 @@ class App:
         self.window_y = 50
         self.drag_offset_x = 0
         self.drag_offset_y = 0
-        self.running_app_instance = None  # 追加: 実行中のアプリインスタンスを保持
+        self.running_app_instance = None
         pyxel.run(self.update, self.draw)
 
     def update(self):
-        if pyxel.btnp(pyxel.KEY_Q):
-            pyxel.quit()
-        self.virtual_os.update()
-        if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
-            x, y = pyxel.mouse_x, pyxel.mouse_y
-            if 5 <= x <= 21 and pyxel.height - 16 <= y <= pyxel.height:
-                self.toggle_menu()
-            self.check_app_selection(pyxel.mouse_x, pyxel.mouse_y)
-            if self.selected_app:
-                self.run_selected_app()
-                self.selected_app = None
-        mx, my = pyxel.mouse_x, pyxel.mouse_y
-        if self.window_x <= mx <= self.window_x + 160 and self.window_y <= my <= self.window_y + 20:
-            self.dragging = True
-            self.drag_offset_x = mx - self.window_x
-            self.drag_offset_y = my - self.window_y
-        elif pyxel.btnr(pyxel.MOUSE_BUTTON_LEFT):
-            self.dragging = False
-        if self.dragging:
-            self.window_x = pyxel.mouse_x - self.drag_offset_x
-            self.window_y = pyxel.mouse_y - self.drag_offset_y
         if self.running_app_instance and hasattr(self.running_app_instance, 'update'):
-            # 選択されたアプリのupdateメソッドを呼び出す
             self.running_app_instance.update()
         else:
             # 通常のupdateロジック
             if pyxel.btnp(pyxel.KEY_Q):
                 pyxel.quit()
             self.virtual_os.update()
-            # その他のupdateロジック...
+            if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
+                x, y = pyxel.mouse_x, pyxel.mouse_y
+                if 5 <= x <= 21 and pyxel.height - 16 <= y <= pyxel.height:
+                    self.toggle_menu()
+                self.check_app_selection(pyxel.mouse_x, pyxel.mouse_y)
+                if self.selected_app:
+                    self.run_selected_app()
+                    self.selected_app = None
+            mx, my = pyxel.mouse_x, pyxel.mouse_y
+            if self.window_x <= mx <= self.window_x + 160 and self.window_y <= my <= self.window_y + 20:
+                self.dragging = True
+                self.drag_offset_x = mx - self.window_x
+                self.drag_offset_y = my - self.window_y
+            elif pyxel.btnr(pyxel.MOUSE_BUTTON_LEFT):
+                self.dragging = False
+            if self.dragging:
+                self.window_x = pyxel.mouse_x - self.drag_offset_x
+                self.window_y = pyxel.mouse_y - self.drag_offset_y
 
     def toggle_menu(self):
         self.menu_open = not self.menu_open
@@ -159,12 +154,14 @@ class App:
             spec = importlib.util.spec_from_file_location("app", os.path.join(app_path, "main.py"))
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-            self.running_app_instance = module.App()  # 実行中のアプリインスタンスを更新
+            app_instance = module.App()
+            while hasattr(app_instance, 'update'):
+                app_instance.update()
+                app_instance.draw()
 
-        app_thread = threading.Thread(target=run_app)  # 新しいスレッドでアプリを実行
-        app_thread.start()  # スレッドを開始
+        app_thread = threading.Thread(target=run_app)
+        app_thread.start()
         self.selected_app = None
-        
 
     def get_menu_position(self):
         menu_width = 160
